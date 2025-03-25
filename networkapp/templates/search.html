@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="search-container text-center">
+    <h2 class="text-primary">기업 네트워크 검색</h2>
+    <p class="text-muted">기업명, 업종, 주요 제품명을 입력하세요.</p>
+
+    <form method="POST" action="/" class="mt-4">
+        {% csrf_token %}
+        <div class="input-group search-box">
+            <input type="text" class="form-control" name="search_text" placeholder="검색어 입력..." required>
+            <button type="submit" class="btn btn-primary">검색</button>
+        </div>
+    </form>
+
+    {% if error %}
+        <p class="text-danger mt-3">{{ error }}</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>네트워크 그래프와 테이블</title>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        #container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        #network {
+            width: 100%;
+            height: 500px;
+            border: 1px solid lightgray;
+            margin-bottom: 20px;
+        }
+        
+        #data-display {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #f2f2f2;
+        }
+        
+        .data-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .selected-node {
+            color: #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1>네트워크 그래프 시각화</h1>
+        <div id="network"></div>
+        
+        <div id="data-display">
+            <div class="data-title">선택된 노드: <span id="selected-node-label" class="selected-node"></span></div>
+            <div id="node-details-container">
+                <h3>노드 세부 정보</h3>
+                <table id="node-details-table">
+                    <thead>
+                        <tr>
+                            <th>속성</th>
+                            <th>값</th>
+                        </tr>
+                    </thead>
+                    <tbody id="node-details-body">
+                        <!-- 여기에 동적으로 데이터가 추가됩니다 -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="edge-details-container" style="margin-top: 20px; display: none;">
+                <h3>연결된 관계</h3>
+                <table id="edge-details-table">
+                    <thead>
+                        <tr>
+                            <th>연결 대상</th>
+                            <th>강도</th>
+                            <th>관계유형</th>
+                        </tr>
+                    </thead>
+                    <tbody id="edge-details-body">
+                        <!-- 여기에 동적으로 데이터가 추가됩니다 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        // Django의 템플릿 변수를 JavaScript 변수로 변환
+        var nodesData = {{ nodes|safe }};
+        var edgesData = {{ edges|safe }};
+        
+        // 데이터 준비
+        var nodes = new vis.DataSet(nodesData);
+        var edges = new vis.DataSet(edgesData);
+        
+        var data = {
+            nodes: nodes,
+            edges: edges
+        };
+        
+        // 네트워크 옵션 설정
+        var options = {
+            nodes: {
+                shape: 'circle',
+                size: 30,
+                font: {
+                    size: 14
+                },
+                borderWidth: 2,
+                shadow: true
+            },
+            edges: {
+                width: 2,
+                shadow: true,
+                smooth: {
+                    type: 'continuous'
+                }
+            },
+            physics: {
+                stabilization: true,
+                barnesHut: {
+                    gravitationalConstant: -2000,
+                    springConstant: 0.04,
+                    springLength: 95
+                }
+            },
+            interaction: {
+                hover: true,
+                tooltipDelay: 200
+            }
+        };
+        
+        // 네트워크 생성
+        var container = document.getElementById('network');
+        var network = new vis.Network(container, data, options);
+        
+        // 노드 클릭 이벤트 처리
+        network.on("click", function(params) {
+            if (params.nodes.length > 0) {
+                // 노드가 선택됨
+                var nodeId = params.nodes[0];
+                displayNodeDetails(nodeId);
+            } else {
+                // 노드가 선택되지 않음 (배경 클릭 등)
+                hideDataDisplay();
+            }
+        });
+        
+        // 노드 세부 정보 표시 함수
+        function displayNodeDetails(nodeId) {
+            var node = nodes.get(nodeId);
+            
+            if (!node) return;
+            
+            // 선택된 노드 라벨 표시
+            document.getElementById('selected-node-label').textContent = node.label;
+            
+            // 노드 세부 정보 테이블에 데이터 추가
+            var detailsBody = document.getElementById('node-details-body');
+            detailsBody.innerHTML = '';
+            
+            // 기본 정보 추가
+            var basicRow = document.createElement('tr');
+            basicRow.innerHTML = `<td>ID</td><td>${node.id}</td>`;
+            detailsBody.appendChild(basicRow);
+            
+            // 세부 정보 추가
+            if (node.details) {
+                for (var key in node.details) {
+                    var row = document.createElement('tr');
+                    row.innerHTML = `<td>${key}</td><td>${node.details[key]}</td>`;
+                    detailsBody.appendChild(row);
+                }
+            }
+            
+            // 연결된 엣지 정보 표시
+            displayConnectedEdges(nodeId);
+            
+            // 데이터 표시 영역 보이기
+            document.getElementById('data-display').style.display = 'block';
+        }
+        
+        // 연결된 엣지 정보 표시 함수
+        function displayConnectedEdges(nodeId) {
+            var connectedEdges = network.getConnectedEdges(nodeId);
+            var edgeDetailsContainer = document.getElementById('edge-details-container');
+            
+            if (connectedEdges.length > 0) {
+                var edgeDetailsBody = document.getElementById('edge-details-body');
+                edgeDetailsBody.innerHTML = '';
+                
+                connectedEdges.forEach(function(edgeId) {
+                    var edge = edges.get(edgeId);
+                    var connectedNodeId = edge.from === parseInt(nodeId) ? edge.to : edge.from;
+                    var connectedNode = nodes.get(connectedNodeId);
+                    
+                    if (connectedNode) {
+                        var row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${connectedNode.label}</td>
+                            <td>${edge.details ? edge.details.강도 : '-'}</td>
+                            <td>${edge.details ? edge.details.관계유형 : '-'}</td>
+                        `;
+                        edgeDetailsBody.appendChild(row);
+                    }
+                });
+                
+                edgeDetailsContainer.style.display = 'block';
+            } else {
+                edgeDetailsContainer.style.display = 'none';
+            }
+        }
+        
+        // 데이터 표시 영역 숨기기 함수
+        function hideDataDisplay() {
+            document.getElementById('data-display').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
