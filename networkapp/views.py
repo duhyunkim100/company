@@ -7,11 +7,6 @@ import networkx as nx
 import matplotlib.font_manager as fm
 from django.http import JsonResponse
 
-#  한글 폰트 설정
-font_path = "C:/Windows/Fonts/H2GTRM.ttf"
-font_prop = fm.FontProperties(fname=font_path)
-plt.rc("font", family=font_prop.get_name())
-plt.rcParams["axes.unicode_minus"] = False
 
 #  **기업 검색 함수**
 def search_company(request):
